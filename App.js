@@ -1,9 +1,10 @@
 import * as React from 'react';
 import { useState, useEffect } from 'react';
-import { SafeAreaView, FlatList, View, Dimensions, KeyboardAvoidingView, Platform } from 'react-native';
+import { SafeAreaView, FlatList, View, Dimensions, KeyboardAvoidingView, Platform, Text } from 'react-native';
 import { Provider as PaperProvider, Appbar, TextInput, Button, Card, Title, Paragraph, FAB, Menu, Modal, Portal, ProgressBar } from 'react-native-paper';
 import { PieChart } from 'react-native-chart-kit';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 
 const defaultCategories = [
   'Food & Dining',
@@ -65,9 +66,21 @@ export default function App() {
   const [rawBudget, setRawBudget] = useState('');
   const [mustSetBudget, setMustSetBudget] = useState(false);
 
+  // Auth states
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [authMode, setAuthMode] = useState('login'); // 'login' or 'signup'
+  const [authUsername, setAuthUsername] = useState('');
+  const [authPassword, setAuthPassword] = useState('');
+  const [authError, setAuthError] = useState('');
+
   useEffect(() => {
     const loadData = async () => {
       try {
+        // Check for credentials
+        const savedCreds = await AsyncStorage.getItem('credentials');
+        if (!savedCreds) {
+          setAuthMode('signup');
+        }
         const savedCurrency = await AsyncStorage.getItem('currency');
         if (savedCurrency) {
           setCurrency(savedCurrency);
@@ -184,6 +197,89 @@ export default function App() {
   const totalIncome = incomeTransactions.reduce((sum, tx) => sum + Math.abs(tx.amount), 0);
   const totalExpense = expenseTransactions.reduce((sum, tx) => sum + Math.abs(tx.amount), 0);
 
+  // Add login/signup logic
+  const handleSignup = async () => {
+    if (!authUsername || !authPassword) {
+      setAuthError('Please enter a username and password.');
+      return;
+    }
+    // Save credentials (hash password for basic obfuscation)
+    const hash = btoa(authPassword);
+    await AsyncStorage.setItem('credentials', JSON.stringify({ username: authUsername, password: hash }));
+    setIsAuthenticated(true);
+    setAuthError('');
+  };
+  const handleLogin = async () => {
+    const savedCreds = await AsyncStorage.getItem('credentials');
+    if (!savedCreds) {
+      setAuthError('No account found. Please sign up.');
+      setAuthMode('signup');
+      return;
+    }
+    const { username, password } = JSON.parse(savedCreds);
+    if (authUsername === username && btoa(authPassword) === password) {
+      setIsAuthenticated(true);
+      setAuthError('');
+    } else {
+      setAuthError('Invalid username or password.');
+    }
+  };
+  const handleLogout = async () => {
+    setIsAuthenticated(false);
+    setAuthUsername('');
+    setAuthPassword('');
+    setAuthError('');
+  };
+
+  if (!isAuthenticated) {
+    return (
+      <PaperProvider>
+        <SafeAreaView style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#f5f6fa' }}>
+          <Card style={{ width: 320, padding: 20 }}>
+            <Title style={{ textAlign: 'center', marginBottom: 12 }}>
+              {authMode === 'signup' ? 'Sign Up' : 'Login'}
+            </Title>
+            <TextInput
+              label="Username"
+              value={authUsername}
+              onChangeText={setAuthUsername}
+              style={{ marginBottom: 12 }}
+              autoCapitalize="none"
+            />
+            <TextInput
+              label="Password"
+              value={authPassword}
+              onChangeText={setAuthPassword}
+              secureTextEntry
+              style={{ marginBottom: 12 }}
+            />
+            {authError ? (
+              <Paragraph style={{ color: '#ff5252', marginBottom: 8 }}>{authError}</Paragraph>
+            ) : null}
+            {authMode === 'signup' ? (
+              <Button mode="contained" onPress={handleSignup} style={{ marginBottom: 8 }}>
+                Sign Up
+              </Button>
+            ) : (
+              <Button mode="contained" onPress={handleLogin} style={{ marginBottom: 8 }}>
+                Login
+              </Button>
+            )}
+            <Button
+              onPress={() => {
+                setAuthMode(authMode === 'signup' ? 'login' : 'signup');
+                setAuthError('');
+              }}
+              style={{ marginTop: 4 }}
+            >
+              {authMode === 'signup' ? 'Already have an account? Login' : "Don't have an account? Sign Up"}
+            </Button>
+          </Card>
+        </SafeAreaView>
+      </PaperProvider>
+    );
+  }
+
   return (
     <PaperProvider>
       <KeyboardAvoidingView
@@ -238,6 +334,13 @@ export default function App() {
                 />
               ))}
             </Menu>
+            <Appbar.Action
+              icon={({ size, color }) => (
+                <MaterialCommunityIcons name="logout" size={size} color={color} />
+              )}
+              color="black"
+              onPress={handleLogout}
+            />
           </Appbar.Header>
 
           {incomeChartData.length > 0 && (
