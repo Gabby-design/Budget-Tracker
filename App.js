@@ -16,6 +16,29 @@ const defaultCategories = [
 
 const MAX_LABEL_LENGTH = 10; // Maximum length for category labels
 
+const currencies = [
+  { label: 'USD ($)', symbol: '$' },
+  { label: 'EUR (€)', symbol: '€' },
+  { label: 'GBP (£)', symbol: '£' },
+  { label: 'KES (KSh)', symbol: 'KSh' },
+  { label: 'NGN (₦)', symbol: '₦' },
+  { label: 'INR (₹)', symbol: '₹' },
+  { label: 'JPY (¥)', symbol: '¥' }, // Example
+];
+
+const getCurrencyIcon = (symbol) => {
+  switch (symbol) {
+    case '$': return 'currency-usd';
+    case '€': return 'currency-eur';
+    case '£': return 'currency-gbp';
+    case 'KSh': return 'currency-kes';
+    case '₦': return 'currency-ngn';
+    case '₹': return 'currency-inr';
+    case '¥': return 'currency-jpy';
+    default: return 'currency-usd';
+  }
+};
+
 export default function App() {
   const [transactions, setTransactions] = useState([]);
   const [desc, setDesc] = useState('');
@@ -25,15 +48,6 @@ export default function App() {
   const [showForm, setShowForm] = useState(false);
   const [menuVisible, setMenuVisible] = useState(false);
   const [currency, setCurrency] = useState('$');
-  const currencies = [
-    { label: 'USD ($)', symbol: '$' },
-    { label: 'EUR (€)', symbol: '€' },
-    { label: 'GBP (£)', symbol: '£' },
-    { label: 'KES (KSh)', symbol: 'KSh' },
-    { label: 'NGN (₦)', symbol: '₦' },
-    { label: 'INR (₹)', symbol: '₹' },
-    { label: 'JPY (¥)', symbol: '¥' }, // Example
-  ];
   const [currencyMenuVisible, setCurrencyMenuVisible] = useState(false);
   const [categoryMenuVisible, setCategoryMenuVisible] = useState(false);
   const [addCategoryMenuVisible, setAddCategoryMenuVisible] = useState(false);
@@ -46,8 +60,6 @@ export default function App() {
   const [editAmount, setEditAmount] = useState('');
   const [editCategory, setEditCategory] = useState(defaultCategories[0]);
   const [editRawAmount, setEditRawAmount] = useState('');
-  const [transactionCurrency, setTransactionCurrency] = useState(currency); // for add form
-  const [editTransactionCurrency, setEditTransactionCurrency] = useState(currency); // for edit form
   const [mustSelectCurrency, setMustSelectCurrency] = useState(false);
   const [userBudget, setUserBudget] = useState('');
   const [rawBudget, setRawBudget] = useState('');
@@ -167,6 +179,29 @@ export default function App() {
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       >
         <SafeAreaView style={{ flex: 1 }}>
+          {rawBudget && totalExpense > 0 && (
+            (() => {
+              const percentUsed = (parseFloat(rawBudget) > 0) ? (totalExpense / parseFloat(rawBudget)) : 0;
+              if (percentUsed >= 1) {
+                return (
+                  <View style={{ backgroundColor: '#ff5252', padding: 10 }}>
+                    <Paragraph style={{ color: 'white', textAlign: 'center', fontWeight: 'bold' }}>
+                      Alert: You have exceeded your total budget!
+                    </Paragraph>
+                  </View>
+                );
+              } else if (percentUsed >= 0.8) {
+                return (
+                  <View style={{ backgroundColor: '#f9d423', padding: 10 }}>
+                    <Paragraph style={{ color: '#333', textAlign: 'center', fontWeight: 'bold' }}>
+                      Warning: You have used {Math.round(percentUsed * 100)}% of your total budget.
+                    </Paragraph>
+                  </View>
+                );
+              }
+              return null;
+            })()
+          )}
           <Appbar.Header>
             <Appbar.Content title={`Budget Tracker Pro (${currency})`} />
             <Menu
@@ -174,8 +209,8 @@ export default function App() {
               onDismiss={() => setCurrencyMenuVisible(false)}
               anchor={
                 <Appbar.Action
-                  icon="currency-usd"
-                  color="white"
+                  icon={getCurrencyIcon(currency)}
+                  color="black"
                   onPress={() => setCurrencyMenuVisible(true)}
                 />
               }
@@ -195,15 +230,7 @@ export default function App() {
 
           {incomeChartData.length > 0 && (
             <View>
-              <Paragraph
-                style={{
-                  textAlign: 'center',
-                  marginTop: 8,
-                  fontWeight: 'bold',
-                  fontSize:
-                    (`${currency}${totalIncome.toLocaleString()}`.length > 15 ? 16 : 20)
-                }}
-              >
+              <Paragraph style={{ textAlign: 'center', marginTop: 8, fontWeight: 'bold' }}>
                 Total Income: {currency}{totalIncome.toLocaleString()}
               </Paragraph>
               <Paragraph style={{ textAlign: 'center', marginBottom: 4, fontWeight: 'bold' }}>
@@ -235,15 +262,7 @@ export default function App() {
           )}
           {expenseChartData.length > 0 && (
             <View>
-              <Paragraph
-                style={{
-                  textAlign: 'center',
-                  marginTop: 8,
-                  fontWeight: 'bold',
-                  fontSize:
-                    (`${currency}${totalExpense.toLocaleString()}`.length > 15 ? 16 : 20)
-                }}
-              >
+              <Paragraph style={{ textAlign: 'center', marginTop: 8, fontWeight: 'bold' }}>
                 Total Expenses: {currency}{totalExpense.toLocaleString()}
               </Paragraph>
               <Paragraph style={{ textAlign: 'center', marginBottom: 4, fontWeight: 'bold' }}>
@@ -313,10 +332,9 @@ export default function App() {
                 label="Amount"
                 value={amount}
                 onChangeText={val => {
-                  // Remove formatting for raw value
                   const raw = val.replace(/[^0-9.]/g, '');
                   setRawAmount(raw);
-                  setAmount(formatCurrency(raw, transactionCurrency)); // <-- use transactionCurrency here!
+                  setAmount(formatCurrency(raw, currency));
                 }}
                 keyboardType="numeric"
                 style={{ marginBottom: 12 }}
@@ -345,30 +363,13 @@ export default function App() {
                   />
                 ))}
               </Menu>
-              <Menu
-                visible={addCurrencyMenuVisible}
-                onDismiss={() => setAddCurrencyMenuVisible(false)}
-                anchor={
-                  <Button
-                    mode="outlined"
-                    onPress={() => setAddCurrencyMenuVisible(true)}
-                    style={{ marginBottom: 12 }}
-                  >
-                    {transactionCurrency}
-                  </Button>
-                }
+              <Button
+                mode="outlined"
+                disabled
+                style={{ marginBottom: 12 }}
               >
-                {currencies.map(cur => (
-                  <Menu.Item
-                    key={cur.symbol}
-                    onPress={() => {
-                      setTransactionCurrency(cur.symbol);
-                      setAddCurrencyMenuVisible(false);
-                    }}
-                    title={cur.label}
-                  />
-                ))}
-              </Menu>
+                {currency}
+              </Button>
               <Button mode="contained" onPress={addTransaction} disabled={mustSetBudget || mustSelectCurrency}>
                 Add Transaction
               </Button>
