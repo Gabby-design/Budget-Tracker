@@ -77,6 +77,15 @@ export default function App() {
         }
         const jsonValue = await AsyncStorage.getItem('transactions');
         if (jsonValue != null) setTransactions(JSON.parse(jsonValue));
+        // Load user budget
+        const savedBudget = await AsyncStorage.getItem('userBudget');
+        if (savedBudget) {
+          setRawBudget(savedBudget);
+          setUserBudget(formatCurrency(savedBudget, savedCurrency || currency));
+          setMustSetBudget(false);
+        } else {
+          setMustSetBudget(true);
+        }
       } catch (e) {
         console.error(e);
       }
@@ -115,13 +124,16 @@ export default function App() {
     txs.forEach(tx => {
       totals[tx.category] = (totals[tx.category] || 0) + Math.abs(tx.amount);
     });
-    return Object.keys(totals).map((cat, i) => ({
-      name: cat.length > MAX_LABEL_LENGTH ? cat.slice(0, MAX_LABEL_LENGTH) + '…' : cat,
-      amount: totals[cat],
-      color: ['#43e97b', '#4f8cff', '#f9d423', '#fc466b', '#f7971e', '#a259c6'][i % 6],
-      legendFontColor: '#333',
-      legendFontSize: 14
-    }));
+    return Object.keys(totals).map((cat, i) => {
+      const isLong = cat.length > MAX_LABEL_LENGTH;
+      return {
+        name: cat.length > MAX_LABEL_LENGTH ? cat.slice(0, MAX_LABEL_LENGTH) + '…' : cat,
+        amount: totals[cat],
+        color: ['#43e97b', '#4f8cff', '#f9d423', '#fc466b', '#f7971e', '#a259c6'][i % 6],
+        legendFontColor: '#333',
+        legendFontSize: isLong ? 10 : 14
+      };
+    });
   };
 
   const incomeChartData = getCategoryTotals(incomeTransactions);
@@ -256,7 +268,7 @@ export default function App() {
                 backgroundColor="transparent"
                 paddingLeft="16"
                 absolute
-                style={{ marginVertical: 8 }}
+                style={{ marginVertical: 2 }}
               />
             </View>
           )}
@@ -288,7 +300,7 @@ export default function App() {
                 backgroundColor="transparent"
                 paddingLeft="16"
                 absolute
-                style={{ marginVertical: 8 }}
+                style={{ marginVertical: 2 }}
               />
             </View>
           )}
