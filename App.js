@@ -195,7 +195,15 @@ export default function App() {
 
           {incomeChartData.length > 0 && (
             <View>
-              <Paragraph style={{ textAlign: 'center', marginTop: 8, fontWeight: 'bold' }}>
+              <Paragraph
+                style={{
+                  textAlign: 'center',
+                  marginTop: 8,
+                  fontWeight: 'bold',
+                  fontSize:
+                    (`${currency}${totalIncome.toLocaleString()}`.length > 15 ? 16 : 20)
+                }}
+              >
                 Total Income: {currency}{totalIncome.toLocaleString()}
               </Paragraph>
               <Paragraph style={{ textAlign: 'center', marginBottom: 4, fontWeight: 'bold' }}>
@@ -227,7 +235,15 @@ export default function App() {
           )}
           {expenseChartData.length > 0 && (
             <View>
-              <Paragraph style={{ textAlign: 'center', marginTop: 8, fontWeight: 'bold' }}>
+              <Paragraph
+                style={{
+                  textAlign: 'center',
+                  marginTop: 8,
+                  fontWeight: 'bold',
+                  fontSize:
+                    (`${currency}${totalExpense.toLocaleString()}`.length > 15 ? 16 : 20)
+                }}
+              >
                 Total Expenses: {currency}{totalExpense.toLocaleString()}
               </Paragraph>
               <Paragraph style={{ textAlign: 'center', marginBottom: 4, fontWeight: 'bold' }}>
